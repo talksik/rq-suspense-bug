@@ -1,24 +1,53 @@
-import React from 'react';
-import logo from './logo.svg';
 import './App.css';
+import { QueryClient, QueryClientProvider, useQueryErrorResetBoundary, useSuspenseQuery } from '@tanstack/react-query';
+import { ErrorBoundary } from 'react-error-boundary'
+
+// Create a client
+const queryClient = new QueryClient()
 
 function App() {
+  const { reset } = useQueryErrorResetBoundary()
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ErrorBoundary
+        onReset={reset}
+        fallbackRender={({ resetErrorBoundary }) => (
+          <div>
+            There was an error!
+            <button onClick={() => resetErrorBoundary()}>Try again</button>
+          </div>
+        )}
+      >
+        <Todos />
+      </ErrorBoundary>
+    </QueryClientProvider>
+  )
+}
+
+// mock the idea of protected component/requiring authentication
+let count = 0;
+
+function Todos() {
+  const { data } = useSuspenseQuery({
+    queryKey: ['todos'],
+    queryFn: async () => {
+      console.log('fetching data');
+      console.log(count);
+      if (count === 0) {
+        count++;
+        throw new Error('This is an error');
+      }
+      const response = await fetch('https://jsonplaceholder.typicode.com/todos');
+      const data = await response.json() as any[];
+      return data;
+    },
+    retry: false,
+  });
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      {`got data ${data.length}`}
     </div>
   );
 }
